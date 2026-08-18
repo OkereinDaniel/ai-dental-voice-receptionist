@@ -1,0 +1,11 @@
+{
+  "name": "AI Receptionist- Booking system",
+  "nodes": [],
+  "connections": {},
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "sanitization_note": "Public portfolio-safe export. Node configuration was omitted from this public copy to avoid exposing deployment-specific credentials, webhook identifiers, calendar identifiers, and private configuration."
+}
