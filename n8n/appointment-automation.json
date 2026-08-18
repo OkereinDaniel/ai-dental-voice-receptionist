@@ -1,11 +1,173 @@
 {
   "name": "AI Receptionist- Booking system",
-  "nodes": [],
-  "connections": {},
-  "active": true,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "24ea77f5-df14-4317-9fd6-a64464610009",
+              "name": "patient_name",
+              "value": "={{ Object.values($json.body.message.toolCalls[0].function)[1].patient_name }}",
+              "type": "string"
+            },
+            {
+              "id": "bcc738d4-fc6e-439b-975a-1c9703599807",
+              "name": "phone",
+              "value": "={{ Object.values($json.body.message.toolCalls[0].function)[1].phone }}",
+              "type": "string"
+            },
+            {
+              "id": "093bc3a4-b638-4931-893c-4cc218ac3cd6",
+              "name": "patient_status",
+              "value": "={{ Object.values($json.body.message.toolCalls[0].function)[1].patient_status }}",
+              "type": "string"
+            },
+            {
+              "id": "f97932b5-4bc1-4b81-96d2-be8f1329b20a",
+              "name": "appointment_type",
+              "value": "={{ Object.values($json.body.message.toolCalls[0].function)[1].appointment_type }}",
+              "type": "string"
+            },
+            {
+              "id": "81d02f29-5ca5-4306-92a0-85f6775d0069",
+              "name": "preferred_date",
+              "value": "={{ (() => { const toolCall = $json.body.message.toolCalls[0]; const args = Object.values(toolCall.function)[1]; const raw = args.preferred_date; const now = $now; if (!raw) return null; let date; if (/^\\d{4}-\\d{2}-\\d{2}$/.test(raw)) { const parsed = DateTime.fromISO(raw); date = DateTime.fromObject({ year: now.year, month: parsed.month, day: parsed.day }); } else if (/^\\d{1,2}[\\/-]\\d{1,2}$/.test(raw)) { const parts = raw.split(/[\\/-]/); date = DateTime.fromObject({ year: now.year, month: Number(parts[0]), day: Number(parts[1]) }); } else { date = DateTime.fromFormat(raw, 'MMMM d'); if (!date.isValid) date = DateTime.fromFormat(raw, 'MMM d'); if (!date.isValid) return raw; date = DateTime.fromObject({ year: now.year, month: date.month, day: date.day }); } if (date.startOf('day') < now.startOf('day')) date = date.plus({ years: 1 }); return date.toFormat('yyyy-MM-dd'); })() }}",
+              "type": "string"
+            },
+            {
+              "id": "f45af419-27d0-4e55-9ff1-5ab2ebd8af27",
+              "name": "preferred_time",
+              "value": "={{ Object.values($json.body.message.toolCalls[0].function)[1].preferred_time }}",
+              "type": "string"
+            },
+            {
+              "id": "db4b1402-d256-479a-b640-f1b3d4adba1b",
+              "name": "timezone",
+              "value": "America/New_York",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-128, -256],
+      "id": "89c75bfd-66f3-4599-ace0-1b58b91ae30e",
+      "name": "NORMALIZE APPOINTMENT  REQUEST"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dental-appointment-booking",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-336, -256],
+      "id": "d873830a-807b-4426-ae95-58e0ea9fcf9c",
+      "name": "WEBHOOK",
+      "webhookId": "YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true,"leftValue": "","typeValidation": "strict","version": 3},
+          "conditions": [
+            {"id":"65e73119-1570-4517-a361-84042cc55a5a","leftValue":"={{ $json.patient_name }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}},
+            {"id":"77eb8337-b4c7-433c-ab9b-43544733ec78","leftValue":"={{ $json.phone }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}},
+            {"id":"179d4dab-d3ea-4fcb-a77a-8411b540bfaf","leftValue":"={{ $json.patient_status }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}},
+            {"id":"2d23a9b0-2b91-4bbd-9ab6-f6a076da75d0","leftValue":"={{ $json.appointment_type }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}},
+            {"id":"ee303d41-1b24-44f4-bd74-c813bebd9f6d","leftValue":"={{ $json.preferred_date }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}},
+            {"id":"1799e8f4-c262-4905-9a30-b4c122c02e17","leftValue":"={{ $json.preferred_time }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}},
+            {"id":"85a12f97-e630-4073-b7af-0a1a2c1e47b6","leftValue":"={{ DateTime.fromISO($json.preferred_date).toMillis() }}","rightValue":"={{ $now.toMillis() }}","operator":{"type":"number","operation":"gt"}}
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [208, -512],
+      "id": "23fc2072-2b2a-4790-a9c3-0c508ece530e",
+      "name": "VALIDATE APPOINTMENT REQUEST"
+    },
+    {
+      "parameters": {
+        "resource": "calendar",
+        "calendar": {"__rl": true,"value": "YOUR_GOOGLE_CALENDAR_ID","mode": "list","cachedResultName": "BrightSmile Appointments"},
+        "timeMin": "={{ DateTime.fromISO($json.preferred_date + 'T' + $json.preferred_time, { zone: $json.timezone }).toISO() }}",
+        "timeMax": "={{ DateTime.fromISO($json.preferred_date + 'T' + $json.preferred_time, { zone: $json.timezone }).plus(30, 'minutes').toISO() }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [448, -528],
+      "id": "8b20d9b3-6f72-496e-a7aa-86f43bb261be",
+      "name": "CHECK-IN AVAILABILITY"
+    },
+    {
+      "parameters": {"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},"conditions":[{"id":"5d832d6f-5048-4f59-988c-b7cbdb2c60cd","leftValue":"={{ $json.available }}","rightValue":"","operator":{"type":"boolean","operation":"true","singleValue":true}}],"combinator":"and"},"options":{}},
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [976, -352],
+      "id": "2cc41627-d5cb-48dc-b0df-a6814cef1a08",
+      "name": "If"
+    },
+    {
+      "parameters":{"respondWith":"json","responseBody":"={\n  \"success\": false,\n  \"available\": false,\n  \"appointment_booked\": false,\n  \"status\": \"slot_unavailable\",\n  \"message\": \"The requested appointment date and time is unavailable. Ask the caller for another date and time.\",\n  \"action\": \"ask_for_another_time\"\n}","options":{"responseCode":200}},
+      "type":"n8n-nodes-base.respondToWebhook","typeVersion":1.5,"position":[1184,-256],"id":"8b1b92fd-645f-4fea-8d76-a672a6fb8ce7","name":"SLOT UNAVAILABLE RESPONSE"
+    },
+    {
+      "parameters":{"mode":"combine","combineBy":"combineByPosition","options":{}},
+      "type":"n8n-nodes-base.merge","typeVersion":3.2,"position":[752,-272],"id":"85aa0c54-783a-4579-8147-23a201c49aa8","name":"MERGE APPOINTMENT + AVAILABILITY"
+    },
+    {
+      "parameters":{"respondWith":"json","responseBody":"={{ { results: [ { toolCallId: $('WEBHOOK').item.json.body.message.toolCallList[0].id, result: `Your ${$('CREATE AN EVENT').item.json.summary.match(/Appointment Type:\\s*([^\\n]+)/)?.[1]?.trim() || 'appointment'} appointment for ${$('CREATE AN EVENT').item.json.summary.match(/Patient:\\s*([^\\n]+)/)?.[1]?.trim() || 'you'} has been successfully booked for ${new Date($('CREATE AN EVENT').item.json.start.dateTime).toLocaleString('en-US', { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}.` } ] } }}","options":{}},
+      "type":"n8n-nodes-base.respondToWebhook","typeVersion":1.5,"position":[1488,-320],"id":"e4a31559-8d59-4cce-8612-f72b5c6f168f","name":"APPOINTMENT CONFIRMED RESPONSE"
+    },
+    {
+      "parameters":{"respondWith":"json","responseBody":"{\n  \"success\": false,\n  \"status\": \"invalid_request\",\n  \"message\": \"The appointment request could not be processed because some required information is missing or invalid.\"\n}","options":{"responseCode":400}},
+      "type":"n8n-nodes-base.respondToWebhook","typeVersion":1.5,"position":[384,-336],"id":"9bfb2968-9df0-4523-ace2-c0c930556824","name":"INVALID APPOINTMENT RESPONSE"
+    },
+    {
+      "parameters":{"content":"## AI APPOINTMENT BOOKING \n","height":544,"width":2084,"color":4},"type":"n8n-nodes-base.stickyNote","typeVersion":1,"position":[-368,-608],"id":"82d8e081-cecb-463a-bb8e-48155a6750d2","name":"Sticky Note"
+    },
+    {
+      "parameters":{"httpMethod":"POST","path":"dental-crm-intake","options":{}},"type":"n8n-nodes-base.webhook","typeVersion":2.1,"position":[-192,144],"id":"cf845d65-2004-43f3-97f7-03bbd495f867","name":"CRM INTAKE WEBHOOK","webhookId":"YOUR_WEBHOOK_ID","retryOnFail":true
+    },
+    {
+      "parameters":{"assignments":{"assignments":[{"id":"ade7eb1f-0b3c-43a0-8a06-2d924c732cd1","name":"patient_name","value":"={{$json.body.patient_name}}","type":"string"},{"id":"5aa7c8c0-bdc0-4467-a2d9-cd292e21646f","name":"phone","value":"={{$json.body.phone}}","type":"string"},{"id":"31312440-943c-435f-9705-c6195797e303","name":"appointment_type","value":"={{$json.body.appointment_type}}","type":"string"},{"id":"7b555359-9914-4eea-84f3-1808e580ec35","name":"appointment_date","value":"={{$json.body.preferred_date}}","type":"string"},{"id":"2a761d61-5b2c-4999-b77d-e3a773c2df2b","name":"appointment_time","value":"={{$json.body.preferred_time}}","type":"string"},{"id":"c6d97c6b-5b74-4354-84ee-98d62d374a45","name":"timezone","value":"={{$json.body.timezone}}","type":"string"},{"id":"9b1aa8c5-7594-4738-92d0-6644fc2508a1","name":"patient_type","value":"={{$json.body.patient_status}}","type":"string"},{"id":"e1492940-dfe2-49f0-9e8a-1df120792907","name":"status","value":"confirmed","type":"string"},{"id":"ed97b8f5-ede9-4170-9309-23a5aeee9481","name":"source","value":"ai_voice_receptionist","type":"string"},{"id":"1daa09c9-4c05-4a9f-8c93-8fa0fdaa35ad","name":"created_at","value":"={{ $now.toISO() }}","type":"string"}]},"options":{}},"type":"n8n-nodes-base.set","typeVersion":3.4,"position":[16,144],"id":"68649f0b-c7a9-4375-b670-11dca1da1891","name":"NORMALIZE CRM DATA"
+    },
+    {
+      "parameters":{"calendar":{"__rl":true,"value":"YOUR_GOOGLE_CALENDAR_ID","mode":"list","cachedResultName":"BrightSmile Appointments"},"start":"={{ DateTime.fromISO($json.preferred_date + 'T' + $json.preferred_time, { zone: $json.timezone }).toISO() }}","end":"={{ DateTime.fromISO($json.preferred_date + 'T' + $json.preferred_time, { zone: $json.timezone }).plus(30, 'minutes').toISO() }}","additionalFields":{"summary":"=Patient: {{ $json.patient_name }}\nPhone: {{ $json.phone }}\nPatient Status: {{ $json.patient_status }}\nAppointment Type: {{ $json.appointment_type }}"}},"type":"n8n-nodes-base.googleCalendar","typeVersion":1.3,"position":[1184,-448],"id":"97e104fa-ea95-48e3-8f07-a9d2c4b2ed5a","name":"CREATE AN EVENT"
+    },
+    {
+      "parameters":{"content":"## CRM SYSTEM","height":320,"width":800},"type":"n8n-nodes-base.stickyNote","typeVersion":1,"position":[-320,32],"id":"de447682-e376-4010-abec-dd03f91a02c2","name":"Sticky Note1"
+    },
+    {
+      "parameters":{"method":"POST","url":"https://YOUR_N8N_DOMAIN/webhook/dental-crm-intake","sendBody":true,"specifyBody":"json","jsonBody":"={\n  \"patient_name\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.patient_name }}\",\n  \"phone\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.phone }}\",\n  \"patient_status\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.patient_status }}\",\n  \"appointment_type\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.appointment_type }}\",\n  \"preferred_date\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.preferred_date }}\",\n  \"preferred_time\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.preferred_time }}\",\n  \"timezone\": \"{{ $('NORMALIZE APPOINTMENT  REQUEST').item.json.timezone }}\"\n}","options":{}},"type":"n8n-nodes-base.httpRequest","typeVersion":4.4,"position":[1488,-592],"id":"bccf9121-849d-4f05-8a46-1511ba4155b9","name":"SEND APPOINTMENT TO CRM","retryOnFail":true
+    },
+    {
+      "parameters":{"tableId":"crm-system","fieldsUi":{"fieldValues":[{"fieldId":"patient_name","fieldValue":"={{ $json.patient_name }}"},{"fieldId":"phone","fieldValue":"={{ $json.phone }}"},{"fieldId":"appointment_type","fieldValue":"={{ $json.appointment_type }}"},{"fieldId":"appointment_date","fieldValue":"={{ $json.appointment_date }}"},{"fieldId":"appointment_time","fieldValue":"={{ $json.appointment_time }}"},{"fieldId":"timezone","fieldValue":"={{ $json.appointment_time }}"},{"fieldId":"patient_type","fieldValue":"={{ $json.patient_type }}"},{"fieldId":"status","fieldValue":"={{ $json.status }}"},{"fieldId":"source","fieldValue":"={{ $json.source }}"}]}} ,"type":"n8n-nodes-base.supabase","typeVersion":1,"position":[224,144],"id":"4ecbf76a-c6fa-48e6-99ee-0e4f8e109555","name":"SUPABASE DATABASE","retryOnFail":true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "NORMALIZE APPOINTMENT  REQUEST": {"main":[[{"node":"VALIDATE APPOINTMENT REQUEST","type":"main","index":0},{"node":"MERGE APPOINTMENT + AVAILABILITY","type":"main","index":1}]]},
+    "WEBHOOK": {"main":[[{"node":"NORMALIZE APPOINTMENT  REQUEST","type":"main","index":0}]]},
+    "VALIDATE APPOINTMENT REQUEST": {"main":[[{"node":"CHECK-IN AVAILABILITY","type":"main","index":0}],[{"node":"INVALID APPOINTMENT RESPONSE","type":"main","index":0}]]},
+    "CHECK-IN AVAILABILITY": {"main":[[{"node":"MERGE APPOINTMENT + AVAILABILITY","type":"main","index":0}]]},
+    "If": {"main":[[{"node":"CREATE AN EVENT","type":"main","index":0}],[{"node":"SLOT UNAVAILABLE RESPONSE","type":"main","index":0}]]},
+    "MERGE APPOINTMENT + AVAILABILITY": {"main":[[{"node":"If","type":"main","index":0}]]},
+    "CRM INTAKE WEBHOOK": {"main":[[{"node":"NORMALIZE CRM DATA","type":"main","index":0}]]},
+    "CREATE AN EVENT": {"main":[[{"node":"SEND APPOINTMENT TO CRM","type":"main","index":0},{"node":"APPOINTMENT CONFIRMED RESPONSE","type":"main","index":0}]]},
+    "NORMALIZE CRM DATA": {"main":[[{"node":"SUPABASE DATABASE","type":"main","index":0}]]}
   },
-  "sanitization_note": "Public portfolio-safe export. Node configuration was omitted from this public copy to avoid exposing deployment-specific credentials, webhook identifiers, calendar identifiers, and private configuration."
+  "active": true,
+  "settings": {"executionOrder":"v1","binaryMode":"separate"},
+  "tags": [],
+  "sanitization_note": "Public portfolio-safe export. Credentials, deployment-specific webhook IDs, Google Calendar identifiers, instance metadata, and production webhook domain have been replaced or removed."
 }
